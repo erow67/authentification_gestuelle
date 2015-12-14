@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -50,6 +51,7 @@ public class MainFrame extends javax.swing.JFrame
   private int savedelay = 0;
   String currentDir = "";
   String detectionsDir = "detections";
+    private Object jTextField1;
 
   
   
@@ -148,7 +150,7 @@ public class MainFrame extends javax.swing.JFrame
 		return true;
 	}
   
-  public void  detection_contours(Mat frame, Mat outmat)
+  public ArrayList<Rect>  detection_contours(Mat inmat, Mat outmat)
   {
     Mat v = new Mat();
     Mat vv = outmat.clone();
@@ -162,7 +164,29 @@ public class MainFrame extends javax.swing.JFrame
     Imgproc.findContours(vv, contours, v, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
     int key = findBiggestContour(contours);
     if (key!= 0){
-        Imgproc.drawContours(frame, contours, key, new Scalar(0, 0, 255)); 
+        Imgproc.drawContours(inmat, contours, key, new Scalar(0, 0, 255)); 
+    }
+        
+        double maxArea = 100;
+    int maxAreaIdx;
+    Rect r;
+    ArrayList<Rect> rect_array = new ArrayList();
+
+    for(int idx = 0; idx < contours.size(); idx++)
+    {
+      Mat contour = contours.get(idx);
+      double contourarea = Imgproc.contourArea(contour);
+      if(contourarea > maxArea)
+      {
+        // maxArea = contourarea;
+        maxAreaIdx = idx;
+        r = Imgproc.boundingRect(contours.get(maxAreaIdx));
+        rect_array.add(r);
+        Imgproc.drawContours(inmat, contours, maxAreaIdx, new Scalar(0, 0, 255));
+      }
+    }
+
+   
         Imgproc.convexHull(contours.get(key), hullI, false);
         
         if (hullI != null) {
@@ -177,17 +201,21 @@ public class MainFrame extends javax.swing.JFrame
         for (int i = 0; i < cId.length; i++)
             {
                 lp.add(contourPts[cId[i]]);
-                Core.circle(frame, contourPts[cId[i]], 2, new Scalar(241, 247, 45), -3);
+                Core.circle(inmat, contourPts[cId[i]], 2, new Scalar(241, 247, 45), -3);
                 cpt++;
         }
 
         //hg.hullP.get(hg.cMaxId) returns the locations of the points in the convex hull of the hand
         hullP.get(key).fromList(lp);
         lp.clear();
-        this.jTextField1.setText(Integer.toString(cpt));
+        
         }
-    }
+         
+         v.release();
+    return rect_array;
   }
+    
+      
    
   
  
@@ -239,15 +267,12 @@ public class MainFrame extends javax.swing.JFrame
             Imgproc.threshold(processedFrame, processedFrame, threshold, 255, Imgproc.THRESH_BINARY);
 
             
-            detection_contours(currentFrame, processedFrame);
             
-            /*
+            
             ArrayList<Rect> array = detection_contours(currentFrame, processedFrame);
             
-            */
             
             
-            /*
             if(array.size() > 0)
             {
               Iterator<Rect> it2 = array.iterator();
@@ -260,13 +285,9 @@ public class MainFrame extends javax.swing.JFrame
             }
        
             } 
-            */
+           
             //currentFrame.copyTo(processedFrame);
-          } 
-          else
-          {
-            //frame.copyTo(processedFrame);
-          }
+          
          
           currentFrame.copyTo(processedFrame);
 
@@ -318,8 +339,6 @@ public class MainFrame extends javax.swing.JFrame
         jSliderThreshold = new javax.swing.JSlider();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
-        jTextField1 = new javax.swing.JTextField();
-        jLabel3 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Java OpenCV Webcam");
@@ -367,41 +386,35 @@ public class MainFrame extends javax.swing.JFrame
 
         jLabel2.setText("(zero for local webcamera)");
 
-        jLabel3.setText("Nombre de points :");
-
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addGap(63, 63, 63)
                         .addComponent(jButtonStart, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
-                        .addComponent(jButtonStop, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel3))
+                        .addComponent(jButtonStop, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                    .addComponent(jCheckBoxMotionDetection)
-                                    .addGap(18, 18, 18)
-                                    .addComponent(jLabel1)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                                .addComponent(jCheckBoxMotionDetection)
+                                .addGap(18, 18, 18)
+                                .addComponent(jLabel1)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jSliderThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jPanelSource1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGroup(layout.createSequentialGroup()
+                                    .addComponent(jLabelSource1)
                                     .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(jSliderThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jPanelSource1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addGroup(layout.createSequentialGroup()
-                                        .addComponent(jLabelSource1)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(jTextFieldSource1, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(jLabel2)))))))
-                .addContainerGap(21, Short.MAX_VALUE))
+                                    .addComponent(jTextFieldSource1, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(jLabel2))))))
+                .addContainerGap(27, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -422,11 +435,8 @@ public class MainFrame extends javax.swing.JFrame
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 27, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButtonStart)
-                    .addComponent(jButtonStop)
-                    .addComponent(jLabel3))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(42, 42, 42))
+                    .addComponent(jButtonStop))
+                .addGap(68, 68, 68))
         );
 
         pack();
@@ -496,11 +506,9 @@ public class MainFrame extends javax.swing.JFrame
     private javax.swing.JCheckBox jCheckBoxMotionDetection;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabelSource1;
     private javax.swing.JPanel jPanelSource1;
     private javax.swing.JSlider jSliderThreshold;
-    private javax.swing.JTextField jTextField1;
     private javax.swing.JTextField jTextFieldSource1;
     // End of variables declaration//GEN-END:variables
 }

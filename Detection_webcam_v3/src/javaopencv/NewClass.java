@@ -521,7 +521,7 @@ public class MainFrame extends javax.swing.JFrame
     private javax.swing.JLabel jLabelSource1;
     private javax.swing.JPanel jPanelSource1;
     private javax.swing.JSlider jSliderThreshold;
-   
+    private javax.swing.JTextField jTextField1;
     private javax.swing.JTextField jTextFieldSource1;
     // End of variables declaration                   
 }
