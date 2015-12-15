@@ -27,395 +27,406 @@ import org.opencv.highgui.VideoCapture;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.video.BackgroundSubtractorMOG;
 
-public class MainFrame extends javax.swing.JFrame
-{
+/**
+ * MainFrame, contient  :
+ * 
+ *      * Le thread qui s'occupe du démarrage de la caméra
+ *      * Quelques méthodes permettant de traiter les images
+ *      * Quelques méthodes permettant de traiter les cadres d'authentification 
+ *      * Les interfaces graphiques, génération automatique du builder 
+ *          
+ */
+
+public class MainFrame extends javax.swing.JFrame {
   static
   {
     System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
   }
 
-  private Boolean begin = false;
-  private Boolean firstFrame = true;
-  private VideoCapture video = null;
-  private CaptureThread thread = null;
-  private MatOfByte matOfByte = new MatOfByte();
+  private VideoCapture video;
+  private CaptureThread thread;
+  
+  
   private BufferedImage bufImage = null;
   private InputStream in;
+  
+  // Différentes frames que l'on utilise
   private Mat frameaux = new Mat();
   private Mat frame = new Mat(240, 320, CvType.CV_8UC3);
   private Mat lastFrame = new Mat(240, 320, CvType.CV_8UC3);
   private Mat currentFrame = new Mat(240, 320, CvType.CV_8UC3);
   private Mat processedFrame = new Mat(240, 320, CvType.CV_8UC3);
-  private ImagePanel image;
+  
+  private MatOfByte matOfByte = new MatOfByte();
   private BackgroundSubtractorMOG bsMOG = new BackgroundSubtractorMOG();
+  
+  private ImagePanel image;
+  private Object jTextField1;
+  
+  private Boolean begin = false;
+  private Boolean firstFrame = true;
+  
   private int savedelay = 0;
   String currentDir = "";
   String detectionsDir = "detections";
-  private Object jTextField1;
   
-  public Rect rectA = new Rect();
-  public Rect rectB = new Rect();
-  public Rect rectC = new Rect();
-  public Rect rectD = new Rect();
+  // Dimensions des rectangles
   public static int rectWidth = 80;
   public static int rectHeight = 60;
   
-  public int cptRect=0;
-  public int numeroRect[] = new int[3];
+  private Rect rectA = new Rect(); // Haut - Gauche
+  private Rect rectB = new Rect(); // Bas  - Gauche 
+  private Rect rectC = new Rect(); // Haut - Droite
+  private Rect rectD = new Rect(); // Bas - Droite
   
-  public MainFrame()
-  {
-    initComponents();
-    image = new ImagePanel(new ImageIcon("figs/320x240.gif").getImage());
-    jPanelSource1.add(image, BorderLayout.CENTER);
+  private int cptRect=0; // Compteur du nombre de rectangles sélectionnés
+  private int numeroRect[] = new int[3]; // Numéros des rectangles sélectionnés
+
+    /* ************************
+        METHODE MAIN DU PROJET
+       ************************ */
+  
+    public static void main(String args[]){
+        java.awt.EventQueue.invokeLater(new Runnable(){
+            public void run(){
+                MainFrame mainFrame = new MainFrame();
+                mainFrame.setVisible(true);
+                mainFrame.setLocationRelativeTo(null);
+             }
+        });
+    }
     
-  }
-
-  private void start()
-  {
-    if(!begin)
-    {
-      int sourcen = Integer.parseInt(jTextFieldSource1.getText());
-      System.out.println("Opening source: " + sourcen);
-
-      video = new VideoCapture(sourcen);
-
-      if(video.isOpened())
-      {
-        thread = new CaptureThread();
-        thread.start();
-        begin = true;
-        firstFrame = true;
-      }
+    /* ***********************
+             CONSTRUCTEUR
+       *********************** */
+    public MainFrame(){
+      initComponents();
+      image = new ImagePanel(new ImageIcon("figs/320x240.gif").getImage());
+      jPanelSource1.add(image, BorderLayout.CENTER); 
     }
-  }
-  
-  public void reinitialise() {
-      this.cptRect = 0;
-  }
 
-  private void stop()
-  {
-    if(begin) {
-      try{
-        Thread.sleep(500);
-      } catch(Exception ex){
-      }
-      video.release();
-      begin = false;
-    }
-  }
-
-  public static String getCurrentTimeStamp()
-  {
-    SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");//dd/MM/yyyy
-    Date now = new Date();
-    String strDate = sdfDate.format(now);
-    return strDate;
-  }
-
-  int findBiggestContour(List<MatOfPoint> contours) 
-    {
+    /**
+     * findBiggestContour, trouve le plus gros contour et le renvoie
+     * @param contours : liste de MatOfPoint
+     * @return : le numéro du compteur le plus gros
+     */
+    
+    int findBiggestContour(List<MatOfPoint> contours)  {
         int idx = -1;
         int cNum = 0;
 
-        for (int i = 0; i < contours.size(); i++)
-        {
-                int curNum = contours.get(i).toList().size();
-                if (curNum > cNum) {
-                        idx = i;
-                        cNum = curNum;
-                }
+        for (int i = 0; i < contours.size(); i++) {
+            int curNum = contours.get(i).toList().size();
+            if (curNum > cNum) {
+                idx = i;
+                cNum = curNum;
+            }
         }		
         return idx;
-    }
+     }
   
-  
-  public boolean isInRectangle(Rect source, Point a) {
-      Point debut = new Point (source.x,source.y);
-      Point fin = new Point ((source.x + source.width),(source.y + source.height));
-      
-      if ( (a.x > debut.x) && (a.x < fin.x) && (a.y > debut.y) && (a.y < fin.y) ) {
-          return true;
-      } else return false;
-  }
-  
-  public void  detection_contours(Mat inmat, Mat outmat)
-  {
-    Mat v = new Mat();
-    Mat vv = outmat.clone();
-    List<MatOfPoint> contours = new ArrayList();
-    MatOfInt hullI = new MatOfInt();
-    List<MatOfPoint> hullP = new ArrayList<MatOfPoint>();
-    MatOfInt4 defects = new MatOfInt4();
-    Rect boundingRect = null;
-    double maxArea = 100;
-    int maxAreaIdx;
-    Rect r;
-    ArrayList<Rect> rect_array = new ArrayList();
-    
-    // Trouve tous les contours
-    Imgproc.findContours(vv, contours, v, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-    int key = findBiggestContour(contours);
-    if (key!= 0){
-        Imgproc.drawContours(inmat, contours, key, new Scalar(0, 0, 255)); 
-    }
-        
-    for(int idx = 0; idx < contours.size(); idx++)
-    {
-      Mat contour = contours.get(idx);
-      double contourarea = Imgproc.contourArea(contour);
-      if(contourarea > maxArea)
-      {
-        // maxArea = contourarea;
-        maxAreaIdx = idx;
-        r = Imgproc.boundingRect(contours.get(maxAreaIdx));
-        rect_array.add(r);
-        Imgproc.drawContours(inmat, contours, maxAreaIdx, new Scalar(0, 0, 255));
-      }
+    /**
+     * isInRectangle, check si un point se trouve en x et y d'un rectangle
+     * @param source : Rectangle 
+     * @param a : Point
+     * @return : true s'il est dedans, false sinon
+     */
+
+    public boolean isInRectangle(Rect source, Point a) {
+        Point debut = new Point (source.x,source.y);
+        Point fin = new Point ((source.x + source.width),
+                               (source.y + source.height));
+        if ( (a.x > debut.x) && (a.x < fin.x) 
+          && (a.y > debut.y) && (a.y < fin.y) ) 
+            return true;
+        else 
+            return false;
     }
     
-    // Dessine les rectangle autour des contours
-    if(rect_array.size() > 0) {
-      Iterator<Rect> it2 = rect_array.iterator();
-      while(it2.hasNext()){
-        Rect obj = it2.next();
-        Core.rectangle(currentFrame, obj.br(), obj.tl(),
-          new Scalar(0, 255, 0), 1);
-      }
-    }
+    /**
+     * detection_contours, détecte les contours, les affiches et gères 
+     *                     le traitement d'authentification
+     * @param inmat : la matrice qui arrive pour la detection de contour
+     * @param outmat : la matrice qui sort après les comptours
+     */
+    public void  detection_contours(Mat inmat, Mat outmat){
+        Mat v = new Mat();
+        Mat vv = outmat.clone();
 
-   
-    Imgproc.convexHull(contours.get(key), hullI, false);
+        List<MatOfPoint> contours = new ArrayList(); // Tous les contours
+        int key; // Plus gros contours
+        MatOfInt hullI = new MatOfInt();
+        List<MatOfPoint> hullP = new ArrayList<MatOfPoint>();
+        Rect r; // Rectangle du plus gros contours
 
+        // Trouve tous les contours
+        Imgproc.findContours(vv, contours, v, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+        // Calcul l'indice du plus gros contours
+        key = findBiggestContour(contours);
+        // S'il y a au moins un contours et le 
+        if (key!= 0){
+            Imgproc.drawContours(inmat, contours, key, new Scalar(0, 0, 255)); 
+            r = Imgproc.boundingRect(contours.get(key));
+            Core.rectangle(currentFrame, r.br(), r.tl(),
+              new Scalar(0, 255, 0), 1);
+        }
+
+        // Calcul les points convexes de la main
+        Imgproc.convexHull(contours.get(key), hullI, false);
+
+    // S'il y a des points de convexion
     if (hullI != null) {
+        // Reinitialise les points de convexion
         hullP.clear();
+
+        // On calcule le nombres de points de convexion
         for (int i = 0; contours.size() >= i; i++)
-        hullP.add(new MatOfPoint());
+           hullP.add(new MatOfPoint());
 
-    int[] cId = hullI.toArray();
-    List<Point> lp = new ArrayList<Point>();
-    Point[] contourPts = contours.get(key).toArray();
-    
-    
-    int findRectA = 0;
-    int findRectB = 0;
-    int findRectC = 0;
-    int findRectD = 0;
-    
-    
-    
-    for (int i = 0; i < cId.length; i++)
-        {
-            lp.add(contourPts[cId[i]]);
-            Core.circle(inmat, contourPts[cId[i]], 2, new Scalar(241, 247, 45), -3);
+        int[] cId = hullI.toArray();
 
+        // On récupère dans un tableau de points, les points du contours
+        Point[] contourPts = contours.get(key).toArray();
+
+        // Réinitialisation des points de recherche dans les tableau
+        int findRectA = 0;
+        int findRectB = 0;
+        int findRectC = 0;
+        int findRectD = 0;
+
+        // Pour chaque point de convexion
+        for (int i = 0; i < cId.length; i++){           
+            // Dessin du point de convexion sur la matrice
+            Core.circle(inmat, contourPts[cId[i]], 2, 
+                    new Scalar(241, 247, 45), -3);
+
+            // Si le point de convexion se trouve dans un des carrés
+            //     on incrémente le compteur associé        
             if (isInRectangle(rectA,contourPts[cId[i]])) 
                 findRectA++;
-            
-            if (isInRectangle(rectB,contourPts[cId[i]])) 
+            else if (isInRectangle(rectB,contourPts[cId[i]])) 
                 findRectB++;
-            
-            if (isInRectangle(rectC,contourPts[cId[i]])) 
+            else if (isInRectangle(rectC,contourPts[cId[i]])) 
                 findRectC++;
-            
-            if (isInRectangle(rectD,contourPts[cId[i]])) 
+            else if (isInRectangle(rectD,contourPts[cId[i]])) 
                 findRectD++;
-    }
+        }
 
-    // TODO : Ajout
-    
-    if (findRectA>=5) {
-        if (cptRect==0) {
-            numeroRect[cptRect] = 1;
-            cptRect++;
-            System.out.println("Haut gauche"); 
-        } else {
-            if (numeroRect[cptRect-1] != 1) {
+        // Si on a trouvé la main dans le rectangle A
+        if (findRectA>=5) {
+            if (cptRect==0) {
                 numeroRect[cptRect] = 1;
                 cptRect++;
                 System.out.println("Haut gauche"); 
-           }    
+            } else {
+                if (numeroRect[cptRect-1] != 1) {
+                    numeroRect[cptRect] = 1;
+                    if (cptRect == 3) cptRect = 0;
+                    else cptRect ++;
+                    System.out.println("Haut gauche"); 
+                }    
+            }
         }
-    }
-    
-    if (findRectB>=5) {
-        if (cptRect==0) {
-            numeroRect[cptRect] = 2;
-            cptRect++;
-            System.out.println("Bas gauche"); 
-        } else {
-            if (numeroRect[cptRect-1] != 2) {
+
+        // Si on a trouvé la main dans le rectangle B
+        if (findRectB>=5) {
+            if (cptRect==0) {
                 numeroRect[cptRect] = 2;
                 cptRect++;
                 System.out.println("Bas gauche"); 
-           }    
+            } else {
+                if (numeroRect[cptRect-1] != 2) {
+                    numeroRect[cptRect] = 2;
+                    if (cptRect == 3) cptRect = 0;
+                    else cptRect ++;
+                    System.out.println("Bas gauche"); 
+               }    
+            }
         }
-    }
-    
-    if (findRectC>=5) {
-        if (cptRect==0) {
-            numeroRect[cptRect] = 3;
-            cptRect++;
-            System.out.println("Haut droite"); 
-        } else {
-            if (numeroRect[cptRect-1] != 3) {
+
+        // Si on a trouvé la main dans le rectangle C
+        if (findRectC>=5) {
+            if (cptRect==0) {
                 numeroRect[cptRect] = 3;
-                cptRect++;
+                if (cptRect == 3) cptRect = 0;
+                    else cptRect ++;
                 System.out.println("Haut droite"); 
-           }    
+            } else {
+                if (numeroRect[cptRect-1] != 3) {
+                    numeroRect[cptRect] = 3;
+                    if (cptRect == 3) cptRect = 0;
+                    else cptRect ++;
+                    System.out.println("Haut droite"); 
+               }    
+            }
         }
-    }
-    
-    if (findRectD>=5) {
-        if (cptRect==0) {
-            numeroRect[cptRect] = 4;
-            cptRect++;
-            System.out.println("Bas droite"); 
-        } else {
-            if (numeroRect[cptRect-1] != 4) {
+
+        // Si on a trouvé la main dans le rectangle D
+        if (findRectD>=5) {
+            if (cptRect==0) {
                 numeroRect[cptRect] = 4;
                 cptRect++;
-                 System.out.println("Bas droite"); 
-           }    
+                System.out.println("Bas droite"); 
+            } else {
+                if (numeroRect[cptRect-1] != 4) {
+                    numeroRect[cptRect] = 4;
+                    if (cptRect == 3) cptRect = 0;
+                    else cptRect ++;
+
+                     System.out.println("Bas droite"); 
+               }    
+            }
         }
+
+        // Si on a sélectionné 3 fenètres et que cela correspond au mot de passe
+        //      MOT DE PASSE : Haut Gauche - Bas Droite - Bas Gauche
+        if (cptRect == 3) {
+           if ((numeroRect[0] == 1) && (numeroRect[1] == 4) && (numeroRect[2] == 2))
+              this.jTextField2.setText("Authenticated");
+           // Réinitilisation du compteur
+           cptRect=0;
+        }
+    }}
+
+    /**
+     * initialiseRectangle Initialise les dimensions et positions des rectangles
+     */
+    public void initialiseRectangle() {
+      rectA.x = 10;     rectA.y = 10;
+      rectB.x = 10;     rectB.y = 170;
+      rectC.x = 230;     rectC.y = 10;
+      rectD.x = 230;     rectD.y = 170;
+
+      rectA.height = MainFrame.rectHeight;
+      rectB.height = MainFrame.rectHeight;
+      rectC.height = MainFrame.rectHeight;
+      rectD.height = MainFrame.rectHeight;
+
+      rectA.width = MainFrame.rectWidth;
+      rectB.width = MainFrame.rectWidth;
+      rectC.width = MainFrame.rectWidth;
+      rectD.width = MainFrame.rectWidth;
     }
     
-    
-    
-    // Si on a sélectionné 3 fenètres
-    if (cptRect == 3) {
-       if ((numeroRect[0] == 1) && (numeroRect[1] == 4) && (numeroRect[2] == 2))
-          this.jTextField2.setText("Authenticated");
-       
-       cptRect=0;
-    }
-
-
-    //hg.hullP.get(hg.cMaxId) returns the locations of the points in the convex hull of the hand
-    hullP.get(key).fromList(lp);
-    lp.clear();
-
-    }
-         
-       
-    
-  }
-  
-  public void initialiseRectangle() {
-    rectA.x = 10;     rectA.y = 10;
-    rectB.x = 10;     rectB.y = 170;
-    rectC.x = 230;     rectC.y = 10;
-    rectD.x = 230;     rectD.y = 170;
-
-    rectA.height = MainFrame.rectHeight;
-    rectB.height = MainFrame.rectHeight;
-    rectC.height = MainFrame.rectHeight;
-    rectD.height = MainFrame.rectHeight;
-
-    rectA.width = MainFrame.rectWidth;
-    rectB.width = MainFrame.rectWidth;
-    rectC.width = MainFrame.rectWidth;
-    rectD.width = MainFrame.rectWidth;
-  }
-    
-  class CaptureThread extends Thread
-  {
-    @Override
-    public void run()
-    {
-      cptRect = 0;
-      if(video.isOpened())
-      {
-        while(begin == true)
-        {
-            //video.read(frameaux);
-            video.retrieve(frameaux);
-            Imgproc.resize(frameaux, frame, frame.size());
-            frame.copyTo(currentFrame);
-            
-            initialiseRectangle();
-          
-          
-          /* a.x = 10;
-           a.y = 10;
-           a.height = 80;
-           a.width = 60; */
-            
-        
-          if(jCheckBoxMotionDetection.isSelected())
-          {
-            if(firstFrame)
-          {
-            frame.copyTo(lastFrame);
-            firstFrame = false;
-            continue;
-          }
-            
-            Imgproc.GaussianBlur(currentFrame, currentFrame, new Size(3, 3), 0);
-            Imgproc.GaussianBlur(lastFrame, lastFrame, new Size(3, 3), 0);
-            
-            //bsMOG.apply(frame, processedFrame, 0.005);
-            Core.subtract(currentFrame, lastFrame, processedFrame);
-            //Core.absdiff(frame,lastFrame,processedFrame);
-            
-            Imgproc.cvtColor(processedFrame, processedFrame, Imgproc.COLOR_RGB2GRAY);
-            //
-            
-            int threshold = jSliderThreshold.getValue();
-            //Imgproc.adaptiveThreshold(processedFrame, processedFrame, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY_INV, 5, 2);
-            Imgproc.threshold(processedFrame, processedFrame, threshold, 255, Imgproc.THRESH_BINARY);
-
-            
-           
-             detection_contours(currentFrame, processedFrame);
-
-            } 
-           
-            //currentFrame.copyTo(processedFrame);
-           
-          
-          
-        // Dessine les rectangles d'authentifications       
+    /**
+     * drawRectangle, dessine les rectangles sur la matrice
+     */
+    public void drawRectangle() {
         Core.rectangle(currentFrame, rectA.br(), rectA.tl(), new Scalar(0, 255, 255), 2); 
         Core.rectangle(currentFrame, rectB.br(), rectB.tl(), new Scalar(0, 255, 0), 2); 
         Core.rectangle(currentFrame, rectC.br(), rectC.tl(), new Scalar(255, 255, 0), 2); 
-        Core.rectangle(currentFrame, rectD.br(), rectD.tl(), new Scalar(255, 0, 0), 2); 
-        
-        currentFrame.copyTo(processedFrame);
-    
-          Highgui.imencode(".jpg", processedFrame, matOfByte);
-          byte[] byteArray = matOfByte.toArray();
-
-          try
-          {
-            in = new ByteArrayInputStream(byteArray);
-            bufImage = ImageIO.read(in);
-          }
-          catch(Exception ex)
-          {
-            ex.printStackTrace();
-          }
-
-          //image.updateImage(new ImageIcon("figs/lena.png").getImage());
-          image.updateImage(bufImage);
-
-          
-
-          try
-          {
-            Thread.sleep(1);
-          }
-          catch(Exception ex)
-          {
-          }
-        }
-      }
+        Core.rectangle(currentFrame, rectD.br(), rectD.tl(), new Scalar(255, 0, 0), 2);     
     }
-  }
+    
+    /**
+     * CaptureThread : classe qui s'occupe de la video
+     */
+    class CaptureThread extends Thread {
+    @Override
+    public void run() {
+        // Initialisation
+        cptRect = 0; 
+        initialiseRectangle();
+
+        if(video.isOpened()){
+            while(begin == true) {
+                // On récupère l'image de la CaptureVideo
+                video.retrieve(frameaux);
+                // On modifie les dimensions de la frame
+                Imgproc.resize(frameaux, frame, frame.size());
+                // On copie
+                frame.copyTo(currentFrame);
+
+            if(jCheckBoxMotionDetection.isSelected())  {
+                if(firstFrame){
+                    frame.copyTo(lastFrame);
+                    firstFrame = false;
+                    continue;
+                }
+                     
+                // Soustraction de currentFrame par rapport à la dernière
+                Core.subtract(currentFrame, lastFrame, processedFrame);
+
+                // Filtre en niveau de gris
+                Imgproc.cvtColor(processedFrame, processedFrame, 
+                                                        Imgproc.COLOR_RGB2GRAY);
+ 
+                // Filtre threshold + récupération du Jslider
+                int threshold = jSliderThreshold.getValue();
+                Imgproc.threshold(processedFrame, processedFrame, threshold, 
+                                                    255, Imgproc.THRESH_BINARY);
+ 
+                // Detecte les contours et cherc
+                detection_contours(currentFrame, processedFrame);
+
+            } 
+            // Dessine les rectangles d'authentifications  
+            drawRectangle();
+          
+            currentFrame.copyTo(processedFrame);
+    
+            // Encodage de la frame en MatOfByte
+            Highgui.imencode(".jpg", processedFrame, matOfByte);
+            byte[] byteArray = matOfByte.toArray();
+
+            // Affichage de l'image
+            try {
+                in = new ByteArrayInputStream(byteArray);
+                bufImage = ImageIO.read(in);
+                image.updateImage(bufImage);
+            } catch(Exception ex) {
+              ex.printStackTrace();
+            }
+
+            try {
+                Thread.sleep(50);
+            } catch(Exception ex){
+                ex.printStackTrace();
+            }
+            }
+        }
+    }}
+  
+    // Méthode du bouton start : lance la vidéo
+    private void start() {
+        if(!begin) {
+            int sourcen = Integer.parseInt(jTextFieldSource1.getText());
+            System.out.println("Opening source: " + sourcen);
+
+            video = new VideoCapture(sourcen);
+
+            if(video.isOpened()){
+                thread = new CaptureThread();
+                thread.start();
+                begin = true;
+                firstFrame = true;
+            }
+        }
+    }
+  
+    // Méthode du bouton reinitialize : remet le compteur de rectangle à zero
+    private void reinitialise() {
+        this.cptRect = 0;
+    }
+
+    // Methode du bouton stop : stop la video
+    private void stop() {
+        if(begin) {
+            try{
+                Thread.sleep(500);
+            } catch(Exception ex){
+                ex.printStackTrace();
+            }
+        video.release();
+        begin = false;
+        }
+    }
 
 
-  /**
+  /** ***********************************************************
+   * GENERATION AUTOMATIQUE DU BUILDER POUR L'INTERFACE GRAPHIQUE
+   * ************************************************************
+   * 
    * This method is called from within the constructor to initialize the form.
    * WARNING: Do NOT modify this code. The content of this method is always
    * regenerated by the Form Editor.
@@ -578,54 +589,6 @@ public class MainFrame extends javax.swing.JFrame
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
        reinitialise();
     }//GEN-LAST:event_jButton1ActionPerformed
-
-  public static void main(String args[])
-  {
-    /* Set the Nimbus look and feel */
-    //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-     * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-     */
-    try
-    {
-      for(javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels())
-      {
-        if("Windows".equals(info.getName()))
-        {
-          javax.swing.UIManager.setLookAndFeel(info.getClassName());
-          break;
-        }
-      }
-    }
-    catch(ClassNotFoundException ex)
-    {
-      java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-    }
-    catch(InstantiationException ex)
-    {
-      java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-    }
-    catch(IllegalAccessException ex)
-    {
-      java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-    }
-    catch(javax.swing.UnsupportedLookAndFeelException ex)
-    {
-      java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-    }
-    //</editor-fold>
-
-    /* Create and display the form */
-    java.awt.EventQueue.invokeLater(new Runnable()
-    {
-      public void run()
-      {
-        MainFrame mainFrame = new MainFrame();
-        mainFrame.setVisible(true);
-        mainFrame.setLocationRelativeTo(null);
-      }
-    });
-  }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
