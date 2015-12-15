@@ -4,10 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -16,12 +13,10 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
 import org.opencv.core.MatOfInt;
-import org.opencv.core.MatOfInt4;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.highgui.Highgui;
 import org.opencv.highgui.VideoCapture;
 import org.opencv.imgproc.Imgproc;
@@ -45,8 +40,7 @@ public class MainFrame extends javax.swing.JFrame {
 
   private VideoCapture video;
   private CaptureThread thread;
-  
-  
+ 
   private BufferedImage bufImage = null;
   private InputStream in;
   
@@ -88,6 +82,7 @@ public class MainFrame extends javax.swing.JFrame {
   
     public static void main(String args[]){
         java.awt.EventQueue.invokeLater(new Runnable(){
+            @Override
             public void run(){
                 MainFrame mainFrame = new MainFrame();
                 mainFrame.setVisible(true);
@@ -356,7 +351,7 @@ public class MainFrame extends javax.swing.JFrame {
                 Imgproc.threshold(processedFrame, processedFrame, threshold, 
                                                     255, Imgproc.THRESH_BINARY);
  
-                // Detecte les contours et cherc
+                // Detecte les contours et check dans les 
                 detection_contours(currentFrame, processedFrame);
 
             } 
