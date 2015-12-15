@@ -390,10 +390,8 @@ public class MainFrame extends javax.swing.JFrame {
     // Méthode du bouton start : lance la vidéo
     private void start() {
         if(!begin) {
-            int sourcen = Integer.parseInt(jTextFieldSource1.getText());
-            System.out.println("Opening source: " + sourcen);
-
-            video = new VideoCapture(sourcen);
+            
+            video = new VideoCapture(0);
 
             if(video.isOpened()){
                 thread = new CaptureThread();
@@ -436,14 +434,11 @@ public class MainFrame extends javax.swing.JFrame {
     private void initComponents() {
 
         jPanelSource1 = new javax.swing.JPanel();
-        jLabelSource1 = new javax.swing.JLabel();
-        jTextFieldSource1 = new javax.swing.JTextField();
         jButtonStart = new javax.swing.JButton();
         jButtonStop = new javax.swing.JButton();
         jCheckBoxMotionDetection = new javax.swing.JCheckBox();
         jSliderThreshold = new javax.swing.JSlider();
         jLabel1 = new javax.swing.JLabel();
-        jLabel2 = new javax.swing.JLabel();
         jTextField2 = new javax.swing.JTextField();
         jButton1 = new javax.swing.JButton();
 
@@ -462,11 +457,6 @@ public class MainFrame extends javax.swing.JFrame {
             jPanelSource1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGap(0, 238, Short.MAX_VALUE)
         );
-
-        jLabelSource1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabelSource1.setText("Source 1:");
-
-        jTextFieldSource1.setText("0");
 
         jButtonStart.setText("Start");
         jButtonStart.addActionListener(new java.awt.event.ActionListener() {
@@ -490,8 +480,6 @@ public class MainFrame extends javax.swing.JFrame {
         jSliderThreshold.setValue(15);
 
         jLabel1.setText("Threshold:");
-
-        jLabel2.setText("(zero for local webcamera)");
 
         jTextField2.setEditable(false);
         jTextField2.setText("not authenticated");
@@ -523,14 +511,7 @@ public class MainFrame extends javax.swing.JFrame {
                                 .addComponent(jLabel1)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(jSliderThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(jPanelSource1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGroup(layout.createSequentialGroup()
-                                    .addComponent(jLabelSource1)
-                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(jTextFieldSource1, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(jLabel2)))))
+                            .addComponent(jPanelSource1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(63, 63, 63)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -545,12 +526,7 @@ public class MainFrame extends javax.swing.JFrame {
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabelSource1)
-                    .addComponent(jTextFieldSource1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel2))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGap(31, 31, 31)
                 .addComponent(jPanelSource1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -558,7 +534,7 @@ public class MainFrame extends javax.swing.JFrame {
                     .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(jCheckBoxMotionDetection)
                         .addComponent(jLabel1)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 25, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 31, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButtonStart)
                     .addComponent(jButtonStop))
@@ -596,11 +572,8 @@ public class MainFrame extends javax.swing.JFrame {
     private javax.swing.JButton jButtonStop;
     private javax.swing.JCheckBox jCheckBoxMotionDetection;
     private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabelSource1;
     private javax.swing.JPanel jPanelSource1;
     private javax.swing.JSlider jSliderThreshold;
     private javax.swing.JTextField jTextField2;
-    private javax.swing.JTextField jTextFieldSource1;
     // End of variables declaration//GEN-END:variables
 }
